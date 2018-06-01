@@ -56,8 +56,9 @@ n_classes = 101
 # X_val_test = None
 # y_val_test = None
 
-print("Writing *.hdf5")
-h = h5py.File('X_all.hdf5', 'w')
+print("Writing AllData.hdf5")
+h = h5py.File('AllData.hdf5', 'w')
 h.create_dataset('data', data=X_all)
 h.create_dataset('classes', data=y_all)
 h.close()
+
