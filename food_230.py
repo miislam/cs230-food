@@ -21,11 +21,6 @@ from keras.optimizers import SGD, RMSprop, Adam
 
 from random import sample
 
-import zipfile
-from StringIO import StringIO
-from PIL import Image
-import imghdr
-
 import tensorflow as tf
 import glob
 from PIL import Image
@@ -72,10 +67,10 @@ y_test_cat = to_categorical(y_test, n_classes)
 # X_val_test = None
 # y_val_test = None
 
-print("Writing X_test.hdf5")
-h = h5py.File('X_test.hdf5', 'w')
-h.create_dataset('data', data=X_test)
-h.create_dataset('classes', data=y_test_cat)
+print("Writing *.hdf5")
+h = h5py.File('X_all.hdf5', 'w')
+h.create_dataset('data', data=X_all)
+h.create_dataset('classes', data=y_all)
 h.close()
 
 ######## Set up Image Augmentation
