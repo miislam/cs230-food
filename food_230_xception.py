@@ -5,10 +5,8 @@ import h5py
 from sklearn.model_selection import train_test_split
 
 from keras.utils.np_utils import to_categorical
-from keras.applications.inception_v3 import InceptionV3
-from keras.applications.resnet50 import ResNet50
-from keras.applications.vgg19 import VGG19
-from keras.applications.inception_v3 import preprocess_input, decode_predictions
+from keras.applications.xception import Xception
+from keras.applications.xception import preprocess_input, decode_predictions
 from keras.preprocessing import image
 from keras.layers import Input
 from keras.preprocessing.image import ImageDataGenerator
@@ -39,7 +37,7 @@ X_all = np.zeros((0,299,299,3))
 y_all = np.zeros((0,101))
 
 for fooditem in classes:
-    h = h5py.File('data/data_'+fooditem+'.hdf5', 'r')
+    h = h5py.File('images_smallhdf5_107/data_'+fooditem+'.hdf5', 'r')
     h.keys()
     y = np.array(h.get('classes')) # Size (m, 101)
     X = np.array(h.get('data')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
@@ -47,7 +45,7 @@ for fooditem in classes:
     y_all = np.append(y_all,y, axis=0)
     h.close()
 
-X_train, X_val_test, y_train, y_val_test = train_test_split(X_all, y_all, test_size=.20, stratify=y_all)
+X_train, X_val_test, y_train, y_val_test = train_test_split(X_all, y_all, test_size=.33, stratify=y_all)
 X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=.5, stratify=y_val_test)
 
 # y_train_cat = to_categorical(y_train, n_classes)
@@ -83,14 +81,12 @@ val_generator = datagen.flow(X_val, y_val, batch_size=32)
 ## 83% with pre processing (14 mins).
 ## 84.5% with rmsprop/img.aug/dropout
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
-## InceptionV3
+## Xception V1
+
 
 ########### EDIT THIS PART
 K.clear_session()
-# base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-# base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-
+base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 # # x = Flatten()(x)
@@ -106,8 +102,6 @@ predictions = Dense(101, activation='softmax')(x)
 # predictions = Dense(101, activation='softmax', name='predictions')(x)
 
 model = Model(input=base_model.input, output=predictions)
-model.summary()
-len(model.layers)
 
 for layer in base_model.layers:
     layer.trainable = False
@@ -120,34 +114,29 @@ checkpointer = ModelCheckpoint(filepath='first.3.{epoch:02d}-{val_loss:.2f}.hdf5
 csv_logger = CSVLogger('first.3.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    nb_epoch=1,
+                    nb_epoch=2,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
-for layer in model.layers[:150]:
+for layer in model.layers[:112]:
     layer.trainable = False
-for layer in model.layers[150:]:
+for layer in model.layers[112:]:
     layer.trainable = True
 
-# for layer in model.layers[:172]:
-#     layer.trainable = False
-# for layer in model.layers[172:]:
-#     layer.trainable = True
 
 print("Second pass")
 model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-checkpointer = ModelCheckpoint(filepath='food101/second.3.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='second.3.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
 csv_logger = CSVLogger('second.3.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    nb_val_samples=10000,
+                    nb_val_samples=10,
                     samples_per_epoch=X_train.shape[0],
                     nb_epoch=1,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
-
-preds = model.evaluate(X_test, y_test)
+# preds = model.evaluate(X_test, y_test)
 # loss = preds[0]
 # accuracy = preds[1]
 # model.summary()
