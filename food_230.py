@@ -33,45 +33,28 @@ with open('meta/classes.txt', 'r') as txt:
     ix_to_class = dict(zip(range(len(classes)), classes))
     class_to_ix = {v: k for k, v in ix_to_class.items()}
 
-
-images = glob.glob('images/*/*.jpg')
-
 X_all = np.zeros((0,299,299,3))
 y_all = np.zeros((0,101))
 
-for image in images:
-    img = np.array(Image.open(image).resize((299,299)))
-    img = np.expand_dims(img, axis=0)
-    X_all = np.append(X_all,img,axis=0)
-    y_m = np.zeros((1,101))
-    for fooditem in classes:
-        if fooditem in image:
-            y_m[(0,class_to_ix[fooditem])] = 1
-    y_all = np.append(y_all, y_m, axis=0)
-
-y_all.shape
-sum(y_all)
-X_all.shape
-
-# n_classes = len(np.unique(y_all))
-n_classes = 101
+for fooditem in classes:
+    h = h5py.File('data/data_'+fooditem+'.hdf5', 'r')
+    h.keys()
+    y = np.array(h.get('classes')) # Size (m, 101)
+    X = np.array(h.get('data')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
+    X_all = np.append(X_all,X,axis=0)
+    y_all = np.append(y_all,y, axis=0)
+    h.close()
 
 X_train, X_val_test, y_train, y_val_test = train_test_split(X_all, y_all, test_size=.20, stratify=y_all)
 X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=.5, stratify=y_val_test)
 
-y_train_cat = to_categorical(y_train, n_classes)
-y_val_cat = to_categorical(y_val, n_classes)
-y_test_cat = to_categorical(y_test, n_classes)
+# y_train_cat = to_categorical(y_train, n_classes)
+# y_val_cat = to_categorical(y_val, n_classes)
+# y_test_cat = to_categorical(y_test, n_classes)
 
 # X_all = None
 # X_val_test = None
 # y_val_test = None
-
-print("Writing *.hdf5")
-h = h5py.File('X_all.hdf5', 'w')
-h.create_dataset('data', data=X_all)
-h.create_dataset('classes', data=y_all)
-h.close()
 
 ######## Set up Image Augmentation
 print("Setting up ImageDataGenerator")
@@ -94,13 +77,14 @@ val_generator = datagen.flow(X_val, y_val, batch_size=32)
 # generator = datagen.flow(X_train, y_train_cat, batch_size=32)
 # val_generator = datagen.flow(X_val, y_val_cat, batch_size=32)
 
-
 ## Fine tuning. 70% with image augmentation.
 ## 83% with pre processing (14 mins).
 ## 84.5% with rmsprop/img.aug/dropout
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
 ## InceptionV3
 
+
+########### EDIT THIS PART
 K.clear_session()
 base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 x = base_model.output
@@ -122,6 +106,7 @@ model = Model(input=base_model.input, output=predictions)
 for layer in base_model.layers:
     layer.trainable = False
 
+########### EDIT THIS PART
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 
 print("First pass")
@@ -150,3 +135,27 @@ model.fit_generator(generator,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
+
+# preds = model.evaluate(X_test, y_test)
+# loss = preds[0]
+# accuracy = preds[1]
+# model.summary()
+# plot_model(model, to_file = "model.png")
+# SVG(model_to_dot(model).create(prog='dot', format ='svg))
+
+# serialize model to JSON
+model_json = model.to_json()
+with open("model.json", "w") as json_file:
+    json_file.write(model_json)
+# serialize weights to HDF5
+model.save_weights("model.h5")
+print("Saved model to disk")
+ 
+# # load json and create model
+# json_file = open('model.json', 'r')
+# loaded_model_json = json_file.read()
+# json_file.close()
+# loaded_model = model_from_json(loaded_model_json)
+# # load weights into new model
+# loaded_model.load_weights("model.h5")
+# print("Loaded model from disk")
