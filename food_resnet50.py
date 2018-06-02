@@ -88,8 +88,8 @@ val_generator = datagen.flow(X_val, y_val, batch_size=32)
 ########### EDIT THIS PART
 K.clear_session()
 # base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-# base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+# base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
@@ -106,48 +106,43 @@ predictions = Dense(101, activation='softmax')(x)
 # predictions = Dense(101, activation='softmax', name='predictions')(x)
 
 model = Model(input=base_model.input, output=predictions)
-model.summary()
-len(model.layers)
+# model.summary()
+# len(model.layers)
 
 for layer in base_model.layers:
     layer.trainable = False
 
 ########### EDIT THIS PART
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 print("First pass")
-checkpointer = ModelCheckpoint(filepath='first.3.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='resnet50_first.3.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
 csv_logger = CSVLogger('first.3.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    nb_epoch=1,
+                    nb_epoch=10,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
-for layer in model.layers[:150]:
+for layer in model.layers[:140]:
     layer.trainable = False
-for layer in model.layers[150:]:
+for layer in model.layers[140:]:
     layer.trainable = True
-
-# for layer in model.layers[:172]:
-#     layer.trainable = False
-# for layer in model.layers[172:]:
-#     layer.trainable = True
 
 print("Second pass")
 model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-checkpointer = ModelCheckpoint(filepath='food101/second.3.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath='resnet50_second.3.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
 csv_logger = CSVLogger('second.3.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
                     nb_val_samples=10000,
                     samples_per_epoch=X_train.shape[0],
-                    nb_epoch=1,
+                    nb_epoch=100,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
 
-preds = model.evaluate(X_test, y_test)
+# preds = model.evaluate(X_test, y_test)
 # loss = preds[0]
 # accuracy = preds[1]
 # model.summary()
@@ -156,10 +151,10 @@ preds = model.evaluate(X_test, y_test)
 
 # serialize model to JSON
 model_json = model.to_json()
-with open("model.json", "w") as json_file:
+with open("model_resnet50.json", "w") as json_file:
     json_file.write(model_json)
 # serialize weights to HDF5
-model.save_weights("model.h5")
+model.save_weights("model_resnet50.h5")
 print("Saved model to disk")
  
 # # load json and create model

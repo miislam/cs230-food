@@ -33,32 +33,45 @@ with open('meta/classes.txt', 'r') as txt:
     ix_to_class = dict(zip(range(len(classes)), classes))
     class_to_ix = {v: k for k, v in ix_to_class.items()}
 
-
-images = glob.glob('images/*/*.jpg')
-
 X_all = np.zeros((0,299,299,3))
 y_all = np.zeros((0,101))
+    
+for fooditem in classes:
+    images = glob.glob('images/'+fooditem+'/*.jpg')
+    X_all = np.zeros((0,299,299,3))
+    y_all = np.zeros((0,101))
+    for image in images:
+        img = np.array(Image.open(image).resize((299,299)))
+        img = np.expand_dims(img, axis=0)
+        X_all = np.append(X_all,img,axis=0)
+        y_m = np.zeros((1,101))
+        y_m[(0,class_to_ix[fooditem])] = 1
+        y_all = np.append(y_all, y_m, axis=0)
+    h = h5py.File('data_'+fooditem+'.hdf5', 'w')
+    h.create_dataset('data', data=X_all)
+    h.create_dataset('classes', data=y_all)
+    h.close()
+        
 
-for image in images:
-    img = np.array(Image.open(image).resize((299,299)))
-    img = np.expand_dims(img, axis=0)
-    X_all = np.append(X_all,img,axis=0)
-    y_m = np.zeros((1,101))
-    for fooditem in classes:
-        if fooditem in image:
-            y_m[(0,class_to_ix[fooditem])] = 1
-    y_all = np.append(y_all, y_m, axis=0)
-
-# n_classes = len(np.unique(y_all))
 n_classes = 101
 
-# X_all = None
-# X_val_test = None
-# y_val_test = None
+# X_train, X_val_test, y_train, y_val_test = train_test_split(X_all, y_all, test_size=.20, stratify=y_all)
+# X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=.5, stratify=y_val_test)
 
-print("Writing AllData.hdf5")
-h = h5py.File('AllData.hdf5', 'w')
-h.create_dataset('data', data=X_all)
-h.create_dataset('classes', data=y_all)
-h.close()
+# h = h5py.File('train_set.hdf5', 'w')
+# h.create_dataset('data', data=X_train)
+# h.create_dataset('classes', data=y_train)
+# h.close()
+
+# h = h5py.File('val_set.hdf5', 'w')
+# h.create_dataset('data', data=X_val)
+# h.create_dataset('classes', data=y_val)
+# h.close()
+
+# h = h5py.File('test_set.hdf5', 'w')
+# h.create_dataset('data', data=X_test)
+# h.create_dataset('classes', data=y_test)
+# h.close()
+
+
 
