@@ -47,7 +47,7 @@ with open('meta/labels.txt', 'r') as txt:
     labels = [l.strip() for l in txt.readlines()]
 
 print("Loading Data")
-h = h5py.File('all_data_30.hdf5', 'r')
+h = h5py.File('all_data_301515.hdf5', 'r')
 h.keys()
 print("Load Training Data")
 X_train = np.array(h.get('X_train')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
@@ -95,6 +95,9 @@ sum(y_test)
 conf_arr = confusion_matrix(y_test.argmax(axis=1),y_pred.argmax(axis=1))
 norm_conf = []
 
+np.sum(conf_arr, axis = 0)
+sum(conf_arr[:,66]
+
 df_cm = pd.DataFrame(conf_arr[60:75,60:75], index = [i for i in labels[60:75]],
                   columns = [i for i in labels[60:75]])
 plt.figure(figsize = (10,7))
@@ -104,8 +107,9 @@ ax = sn.heatmap(df_cm, annot=True, fmt="d"
                 # ,cmap="YlGnBu"
                 )
 from sklearn.metrics import precision_recall_fscore_support
-precision_recall_fscore_support(y_test.argmax(axis=1),y_pred.argmax(axis=1))
-
+precision, recall, fscore, support = precision_recall_fscore_support(y_test.argmax(axis=1),y_pred.argmax(axis=1))
+precision
+recall
 
 # PLOT MODEL???
 plot_model(model, to_file='model.png')

@@ -39,7 +39,7 @@ with open('meta/classes.txt', 'r') as txt:
     class_to_ix = {v: k for k, v in ix_to_class.items()}
 
 print("Loading Data")
-h = h5py.File('all_data_30.hdf5', 'r')
+h = h5py.File('all_data_301515.hdf5', 'r')
 h.keys()
 print("Load Training Data")
 X_train = np.array(h.get('X_train')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
@@ -78,8 +78,8 @@ datagen = ImageDataGenerator(
     rescale=1./255,
     fill_mode='nearest')
 # datagen.fit(X_train)
-generator = datagen.flow(X_train, y_train, batch_size=9)
-val_generator = datagen.flow(X_dev, y_dev, batch_size=9)
+generator = datagen.flow(X_train, y_train, batch_size=32)
+val_generator = datagen.flow(X_dev, y_dev, batch_size=32)
 # generator = datagen.flow(X_train, y_train_cat, batch_size=32)
 # val_generator = datagen.flow(X_val, y_val_cat, batch_size=32)
 
