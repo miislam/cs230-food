@@ -51,6 +51,8 @@ print("Load Test Data")
 X_test = np.array(h.get('X_test')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
 y_test = np.array(h.get('y_test')) # Size (m, 101)
 h.close()
+# X_train = X_train[0:299,:,:,:]
+
 
 index_train = sample(range(X_train.shape[0]),X_train.shape[0])
 X_train = X_train[index_train,:,:,:]
@@ -78,8 +80,8 @@ datagen = ImageDataGenerator(
     rescale=1./255,
     fill_mode='nearest')
 # datagen.fit(X_train)
-generator = datagen.flow(X_train, y_train, batch_size=9)
-val_generator = datagen.flow(X_dev, y_dev, batch_size=9)
+generator = datagen.flow(X_train, y_train, batch_size=32)
+val_generator = datagen.flow(X_dev, y_dev, batch_size=32)
 # generator = datagen.flow(X_train, y_train_cat, batch_size=32)
 # val_generator = datagen.flow(X_val, y_val_cat, batch_size=32)
 
@@ -93,7 +95,7 @@ val_generator = datagen.flow(X_dev, y_dev, batch_size=9)
 model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 import time
-filename = time.strftime("%Y%m%d_%H%M") + "_inception_adam"
+filename = time.strftime("%Y%m%d_%H%M") + "_xception"
 
 print("First pass")
 checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
@@ -104,9 +106,9 @@ model.fit_generator(generator,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
-for layer in model.layers[:172]:
+for layer in model.layers[:105]:
     layer.trainable = False
-for layer in model.layers[172:]:
+for layer in model.layers[105:]:
     layer.trainable = True
 
 print("Second pass")
