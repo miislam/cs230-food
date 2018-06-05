@@ -123,6 +123,11 @@ model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accur
 import time
 filename = time.strftime("%Y%m%d_%H%M") + "_xception"
 
+# serialize model to JSON
+model_json = model.to_json()
+with open(filename + "_model.json", "w") as json_file:
+    json_file.write(model_json)
+
 print("First pass")
 checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
 csv_logger = CSVLogger(filename + '_first.log')
@@ -155,10 +160,6 @@ model.fit_generator(generator,
 # plot_model(model, to_file = "model.png")
 # SVG(model_to_dot(model).create(prog='dot', format ='svg))
 
-# serialize model to JSON
-model_json = model.to_json()
-with open(filename + "_model.json", "w") as json_file:
-    json_file.write(model_json)
 # serialize weights to HDF5
 model.save_weights(filename + "_modelweights.h5")
 print("Saved model to disk")

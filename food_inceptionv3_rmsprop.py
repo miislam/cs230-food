@@ -120,6 +120,11 @@ for layer in base_model.layers:
 ########### EDIT THIS PART
 model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 
+# serialize model to JSON
+model_json = model.to_json()
+with open(filename + "_model.json", "w") as json_file:
+    json_file.write(model_json)
+    
 import time
 filename = time.strftime("%Y%m%d_%H%M") + "_inception_rmsprop"
 
@@ -155,10 +160,6 @@ model.fit_generator(generator,
 # plot_model(model, to_file = "model.png")
 # SVG(model_to_dot(model).create(prog='dot', format ='svg))
 
-# serialize model to JSON
-model_json = model.to_json()
-with open(filename + "_model.json", "w") as json_file:
-    json_file.write(model_json)
 # serialize weights to HDF5
 model.save_weights(filename + "_modelweights.h5")
 print("Saved model to disk")
