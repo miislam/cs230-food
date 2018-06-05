@@ -30,7 +30,7 @@ import glob
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import confusion_matrix, average_precision_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix, average_precision_score, precision_score, recall_score, precision_recall_curve
 import seaborn as sn
 import pandas as pd
 from keras.utils import plot_model
@@ -108,11 +108,27 @@ y_pred = model.predict(X_eval, verbose=1)
 y_eval_idx = y_eval.argmax(axis=1)
 y_pred_idx = y_pred.argmax(axis=1)
 
-conf_arr = confusion_matrix(y_eval_idx,y_pred_idx)
-df_cm = pd.DataFrame(conf_arr, index = [i for i in range(conf_arr.shape[0])],
-                  columns = [i for i in range(conf_arr.shape[0])])
+conf_mat = confusion_matrix(y_eval_idx,y_pred_idx)
+df_cm = pd.DataFrame(conf_mat, index = [i for i in range(conf_mat.shape[0])],
+                  columns = [i for i in range(conf_mat.shape[0])])
 plt.figure(figsize = (20,20))
 sn.heatmap(df_cm, annot=True)
+
+# num_classes = 101
+num_classes = conf_mat.shape[0]
+TruePositive = np.diag(conf_mat)
+len(TruePositive)
+FalsePositive = []
+for i in range(num_classes):
+    FalsePositive.append(sum(conf_mat[:,i]) - conf_mat[i,i])
+FalseNegative = []
+for i in range(num_classes):
+    FalseNegative.append(sum(conf_mat[i,:]) - conf_mat[i,i])
+TrueNegative = []
+for i in range(num_classes):
+    temp = np.delete(conf_mat, i, 0)   # delete ith row
+    temp = np.delete(temp, i, 1)  # delete ith column
+    TrueNegative.append(sum(sum(temp)))
 
 
 precision, recall, fscore, support = precision_recall_fscore_support(y_eval_idx,y_pred_idx)
@@ -120,9 +136,37 @@ precision, recall, fscore, support = precision_recall_fscore_support(y_eval_idx,
 precision_score(y_eval_idx,y_pred_idx, average ="micro")
 recall_score(y_eval_idx,y_pred_idx, average ="micro")
 
+#  PRECISION RECALL CURVE
+# For each class
+precision = dict()
+recall = dict()
+average_precision = dict()
+for i in range(n_classes):
+    precision[i], recall[i], _ = precision_recall_curve(y_eval[:, i],y_pred[:, i])
+    average_precision[i] = average_precision_score(y_eval[:, i], y_pred[:, i])
+# A "micro-average": quantifying score on all classes jointly
+precision["micro"], recall["micro"], _ = precision_recall_curve(y_eval.ravel(),y_pred.ravel())
+average_precision["micro"] = average_precision_score(y_eval, y_pred, average="micro")
+print('Average precision score, micro-averaged over all classes: {0:0.2f}'.format(average_precision["micro"]))
+plt.figure()
+plt.step(recall['micro'], precision['micro'], color='b', alpha=0.2, where='post')
+plt.fill_between(recall["micro"], precision["micro"], step='post', alpha=0.2, color='b')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.ylim([0.0, 1.05])
+plt.xlim([0.0, 1.0])
+plt.title('Average precision score, micro-averaged over all classes: AP={0:0.2f}'.format(average_precision["micro"]))
+
+
+
+
 error_index = y_eval_idx != y_pred_idx
 y_eval_error = y_eval[error_index]
 X_eval_error = X_eval[error_index]
+
+
+
+
 
 
 
@@ -175,13 +219,13 @@ np.sum(y_train, axis = 0)
 # # y_test[4].argmax(axis=0)
 
 # # MAKE CONFUSION MATRIX PLOT
-# conf_arr = confusion_matrix(y_test.argmax(axis=1),y_pred.argmax(axis=1))
+# conf_mat = confusion_matrix(y_test.argmax(axis=1),y_pred.argmax(axis=1))
 # norm_conf = []
 
-# np.sum(conf_arr, axis = 0)
-# sum(conf_arr[:,66]
+# np.sum(conf_mat, axis = 0)
+# sum(conf_mat[:,66]
 
-# df_cm = pd.DataFrame(conf_arr[60:75,60:75], index = [i for i in labels[60:75]],
+# df_cm = pd.DataFrame(conf_mat[60:75,60:75], index = [i for i in labels[60:75]],
 #                   columns = [i for i in labels[60:75]])
 # plt.figure(figsize = (10,7))
 # sn.heatmap(df_cm, annot=True)
