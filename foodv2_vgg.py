@@ -61,6 +61,7 @@ index_test = sample(range(X_test.shape[0]),X_test.shape[0])
 X_test = X_test[index_test,:,:,:]
 y_test = y_test[index_test,:]
 
+
 ######## Set up Image Augmentation
 print("Setting up ImageDataGenerator")
 datagen = ImageDataGenerator(
@@ -91,37 +92,23 @@ val_generator = datagen.flow(X_test, y_test, batch_size=9)
 ########### EDIT THIS PART
 print("Load Model")
 K.clear_session()
-base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+# base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 # base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-# base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 # base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
-# # x = Flatten()(x)
 x = Dense(4096)(x)
 x = BatchNormalization()(x)
 x = Activation('relu')(x)
 x = Dropout(.5)(x)
 predictions = Dense(101, activation='softmax')(x)
 
-# x = base_model.output
-# x = AveragePooling2D((8, 8), strides=(8, 8), name='avg_pool')(x)
-# x = Flatten(name='flatten')(x)
-# predictions = Dense(101, activation='softmax', name='predictions')(x)
-
 model = Model(inputs=base_model.input, outputs=predictions)
-# model.summary()
-# len(model.layers)
 
-for layer in base_model.layers:
-    layer.trainable = False
-
-########### EDIT THIS PART
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
-    
 import time
-filename = time.strftime("%Y%m%d_%H%M") + "_inception_rmsprop"
+filename = time.strftime("%Y%m%d_%H%M") + "_v2_vgg"
 
 # serialize model to JSON
 model_json = model.to_json()
@@ -129,46 +116,33 @@ with open(filename + "_model.json", "w") as json_file:
     json_file.write(model_json)
 
 print("First pass")
+for layer in base_model.layers:
+    layer.trainable = False
+model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
 checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
 csv_logger = CSVLogger(filename + '_first.log')
-model.fit_generator(generator,
-                    validation_data=val_generator,
-                    epochs=10,
-                    verbose=1,
-                    callbacks=[csv_logger, checkpointer])
-
-for layer in model.layers[:172]:
-    layer.trainable = False
-for layer in model.layers[172:]:
-    layer.trainable = True
-
-print("Second pass")
-model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-checkpointer = ModelCheckpoint(filepath=filename + '_second.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
-csv_logger = CSVLogger(filename + '_second.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
                     epochs=30,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
-
-# preds = model.evaluate(X_test, y_test)
-# loss = preds[0]
-# accuracy = preds[1]
-# model.summary()
-# plot_model(model, to_file = "model.png")
-# SVG(model_to_dot(model).create(prog='dot', format ='svg))
-
 # serialize weights to HDF5
 model.save_weights(filename + "_modelweights.h5")
 print("Saved model to disk")
+
+# print("Second pass")
+# for layer in model.layers[:172]:
+#     layer.trainable = False
+# for layer in model.layers[172:]:
+#     layer.trainable = True
+# model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+# checkpointer = ModelCheckpoint(filepath=filename + '_second.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
+# csv_logger = CSVLogger(filename + '_second.log')
+# model.fit_generator(generator,
+#                     validation_data=val_generator,
+#                     epochs=20,
+#                     verbose=1,
+#                     callbacks=[csv_logger, checkpointer])
+
  
-# # load json and create model
-# json_file = open('model.json', 'r')
-# loaded_model_json = json_file.read()
-# json_file.close()
-# loaded_model = model_from_json(loaded_model_json)
-# # load weights into new model
-# loaded_model.load_weights("model.h5")
-# print("Loaded model from disk")

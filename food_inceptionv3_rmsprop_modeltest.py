@@ -39,14 +39,14 @@ with open('meta/classes.txt', 'r') as txt:
     class_to_ix = {v: k for k, v in ix_to_class.items()}
 
 print("Loading Data")
-h = h5py.File('all_data_300515.hdf5', 'r')
+h = h5py.File('all_data_small.hdf5', 'r')
 h.keys()
-print("Load Training Data")
-X_train = np.array(h.get('X_train')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
-y_train = np.array(h.get('y_train')) # Size (m, 101)
-index_train = sample(range(X_train.shape[0]),X_train.shape[0])
-X_train = X_train[index_train,:,:,:]
-y_train = y_train[index_train,:]
+# print("Load Training Data")
+# X_train = np.array(h.get('X_train')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
+# y_train = np.array(h.get('y_train')) # Size (m, 101)
+# index_train = sample(range(X_train.shape[0]),X_train.shape[0])
+# X_train = X_train[index_train,:,:,:]
+# y_train = y_train[index_train,:]
 # print("Load Dev Data")
 # X_dev = np.array(h.get('X_dev')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
 # y_dev = np.array(h.get('y_dev')) # Size (m, 101)
@@ -54,8 +54,10 @@ y_train = y_train[index_train,:]
 # X_dev = X_dev[index_dev,:,:,:]
 # y_dev = y_dev[index_dev,:]
 print("Load Test Data")
-X_test = np.array(h.get('X_test')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
-y_test = np.array(h.get('y_test')) # Size (m, 101)
+X_train = np.array(h.get('X_test')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
+y_train = np.array(h.get('y_test')) # Size (m, 101)
+X_test = X_train
+y_test = y_train
 h.close()
 index_test = sample(range(X_test.shape[0]),X_test.shape[0])
 X_test = X_test[index_test,:,:,:]

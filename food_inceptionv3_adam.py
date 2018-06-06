@@ -4,12 +4,6 @@ from os.path import isfile, join
 import h5py
 from sklearn.model_selection import train_test_split
 
-from keras.utils.np_utils import to_categorical
-from keras.applications.inception_v3 import InceptionV3
-from keras.applications.resnet50 import ResNet50
-from keras.applications.vgg19 import VGG19
-from keras.applications.xception import Xception
-from keras.applications.inception_v3 import preprocess_input, decode_predictions
 from keras.preprocessing import image
 from keras.layers import Input
 from keras.preprocessing.image import ImageDataGenerator
@@ -22,6 +16,12 @@ from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
 import keras.backend as K
 from keras.optimizers import SGD, RMSprop, Adam
 from keras.models import model_from_json
+from keras.utils.np_utils import to_categorical
+from keras.applications.inception_v3 import InceptionV3
+from keras.applications.resnet50 import ResNet50
+from keras.applications.vgg19 import VGG19
+from keras.applications.xception import Xception
+from keras.applications.inception_v3 import preprocess_input, decode_predictions
 
 from random import sample
 
@@ -134,7 +134,7 @@ checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss
 csv_logger = CSVLogger(filename + '_first.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    epochs=3,
+                    epochs=10,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
@@ -149,7 +149,7 @@ checkpointer = ModelCheckpoint(filepath=filename + '_second.{epoch:02d}-{val_los
 csv_logger = CSVLogger(filename + '_second.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    epochs=5,
+                    epochs=20,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
