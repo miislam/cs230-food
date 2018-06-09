@@ -88,44 +88,47 @@ val_generator = datagen.flow(X_test, y_test, batch_size=9)
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
 ## InceptionV3
 
-for dp in [0.6, 0.65, 0.7]:
-    print("Load Model")
-    K.clear_session()
-    # base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-    # base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-    # base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-    base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-    
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(4096)(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Dropout(dp)(x)
-    predictions = Dense(101, activation='softmax')(x)
-    
-    model = Model(inputs=base_model.input, outputs=predictions)
-    
-    import time
-    filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp_"+str(dp)
-    
-    # serialize model to JSON
-    model_json = model.to_json()
-    with open(filename + "_model.json", "w") as json_file:
-        json_file.write(model_json)
-    
-    print("First pass")
-    for layer in base_model.layers:
-        layer.trainable = False
-    model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
-    checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
-    csv_logger = CSVLogger(filename + '_first.log')
-    model.fit_generator(generator,
-                        validation_data=val_generator,
-                        epochs=10,
-                        verbose=1,
-                        callbacks=[csv_logger, checkpointer])
-    
-    # serialize weights to HDF5
-    model.save_weights(filename + "_modelweights.hdf5")
-    print("Saved model to disk")
+
+print("Load Model")
+K.clear_session()
+# base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+# base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+# base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+x = Dropout(0.4)(x)
+x = Dense(4096)(x)
+x = BatchNormalization()(x)
+x = Activation('relu')(x)
+x = Dropout(0.7)(x)
+predictions = Dense(101, activation='softmax')(x)
+
+model = Model(inputs=base_model.input, outputs=predictions)
+
+import time
+filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp0608"
+
+# serialize model to JSON
+model_json = model.to_json()
+with open(filename + "_model.json", "w") as json_file:
+    json_file.write(model_json)
+
+model.load_weights("20180607_0714_xception_2xdp_0.4_first.10-2.53.hdf5")
+
+print("First pass")
+for layer in base_model.layers:
+    layer.trainable = False
+model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+csv_logger = CSVLogger(filename + '_first.log')
+model.fit_generator(generator,
+                    validation_data=val_generator,
+                    epochs=40,
+                    verbose=1,
+                    callbacks=[csv_logger, checkpointer])
+
+# serialize weights to HDF5
+model.save_weights(filename + "_finalweights.hdf5")
+print("Saved model to disk")

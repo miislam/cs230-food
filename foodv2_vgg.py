@@ -115,11 +115,13 @@ model_json = model.to_json()
 with open(filename + "_model.json", "w") as json_file:
     json_file.write(model_json)
 
-print("First pass")
+model.load_weights("20180606_0529_vgg19_first.10-2.84.hdf5")
+
+print("First pass (after 10 done)")
 for layer in base_model.layers:
     layer.trainable = False
 model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
-checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
 csv_logger = CSVLogger(filename + '_first.log')
 model.fit_generator(generator,
                     validation_data=val_generator,

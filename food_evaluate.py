@@ -30,7 +30,7 @@ import glob
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import confusion_matrix, average_precision_score, precision_score, recall_score, precision_recall_curve
+from sklearn.metrics import confusion_matrix, average_precision_score, precision_score, recall_score, precision_recall_curve, precision_recall_fscore_support, f1_score
 import seaborn as sn
 import pandas as pd
 from keras.utils import plot_model
@@ -48,7 +48,7 @@ with open('meta/labels.txt', 'r') as txt:
 
 
 print("Loading Data")
-h = h5py.File('all_data_30.hdf5', 'r')
+h = h5py.File('all_data_300515.hdf5', 'r')
 h.keys()
 # print("Load Training Data")
 # X_train = np.array(h.get('X_train')) # Size (m, n_h = 299 , n_w = 299, n_c = 3)
@@ -71,48 +71,57 @@ y_dev = y_dev[index_dev,:]
 h.close()
 
 
-print("Loading Model")
-
+print("Load Model")
 K.clear_session()
-base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+# base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 # base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 # base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-# base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
-# # x = Flatten()(x)
 x = Dense(4096)(x)
 x = BatchNormalization()(x)
 x = Activation('relu')(x)
-x = Dropout(.5)(x)
+x = Dropout(0)(x)
 predictions = Dense(101, activation='softmax')(x)
-model = Model(inputs=base_model.input, outputs=predictions)
-for layer in base_model.layers:
-    layer.trainable = False
-model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-# # load json and create model
-# json_file = open(file_name+'_model.json', 'r')
+model = Model(inputs=base_model.input, outputs=predictions)
+
+# json_file = open('20180607_0804_xception_dp07_resume_model.json', 'r')
 # loaded_model_json = json_file.read()
 # json_file.close()
 # model = model_from_json(loaded_model_json)
 
+for layer in base_model.layers:
+    layer.trainable = False
 print("Loading Weights")
-model.load_weights("resnet50_first.03-4.24.hdf5")
+model.load_weights("20180608_0125_xception_dp0707_2p3p4p_third.08-1.73.hdf5")
 
-sampleidx = sample(range(X_dev.shape[0]),100)
+model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+sampleidx = sample(range(X_dev.shape[0]),5000)
 X_eval = X_dev[sampleidx]
 y_eval = y_dev[sampleidx]
+X_eval = X_eval*1./255
 y_pred = model.predict(X_eval, verbose=1)
 y_eval_idx = y_eval.argmax(axis=1)
 y_pred_idx = y_pred.argmax(axis=1)
 
 conf_mat = confusion_matrix(y_eval_idx,y_pred_idx)
-df_cm = pd.DataFrame(conf_mat, index = [i for i in range(conf_mat.shape[0])],
-                  columns = [i for i in range(conf_mat.shape[0])])
-plt.figure(figsize = (20,20))
-sn.heatmap(df_cm, annot=True)
+df_cm = pd.DataFrame(conf_mat, index = [i for i in labels],
+                  columns = [i for i in labels])
+
+plt.figure(figsize = (60,55))
+sn.set(font_scale=3.5)
+sn.heatmap(df_cm, annot=True,annot_kws={"size": 20})
+
+
+plt.ylabel('True label', size = 20)
+plt.xlabel('Predicted label', size =20)
+
+np.savetxt("ConfMat.csv", conf_mat, delimiter=",")
+# plt.xticks(tick_marks, classes, rotation=45)
+# plt.yticks(tick_marks, classes)
 
 # num_classes = 101
 num_classes = conf_mat.shape[0]
@@ -132,15 +141,17 @@ for i in range(num_classes):
 
 
 precision, recall, fscore, support = precision_recall_fscore_support(y_eval_idx,y_pred_idx)
-
-precision_score(y_eval_idx,y_pred_idx, average ="micro")
-recall_score(y_eval_idx,y_pred_idx, average ="micro")
+np.mean(precision)
+precision_score(y_eval_idx,y_pred_idx, average ="macro")
+recall_score(y_eval_idx,y_pred_idx, average ="macro")
+f1_score(y_eval_idx,y_pred_idx, average ="macro")
 
 #  PRECISION RECALL CURVE
 # For each class
 precision = dict()
 recall = dict()
 average_precision = dict()
+n_classes = 101
 for i in range(n_classes):
     precision[i], recall[i], _ = precision_recall_curve(y_eval[:, i],y_pred[:, i])
     average_precision[i] = average_precision_score(y_eval[:, i], y_pred[:, i])
@@ -157,6 +168,7 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('Average precision score, micro-averaged over all classes: AP={0:0.2f}'.format(average_precision["micro"]))
 
+sn.set(font_scale=1.3)
 
 
 
@@ -169,17 +181,19 @@ X_eval_error = X_eval[error_index]
 
 
 
-
-
+plt.clf()
+plt.cla()
+plt.close()
+plt.gcf().clear()
 
 y_eval.argmax(axis=1)
 y_pred.argmax(axis=1)
 
-ix = 0
-plt.imshow(X_dev[sampleidx][ix])
-ix_to_class[y_dev[sampleidx][ix].argmax(axis=0)]
+ix = 10
+plt.imshow(X_eval[ix])
+ix_to_class[y_eval[ix].argmax(axis=0)]
+ix_to_class[y_pred[ix].argmax(axis=0)]
 
-np.sum(y_train, axis = 0)
 
 
 

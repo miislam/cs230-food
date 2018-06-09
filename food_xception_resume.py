@@ -88,7 +88,6 @@ val_generator = datagen.flow(X_test, y_test, batch_size=9)
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
 ## InceptionV3
 
-########### EDIT THIS PART
 print("Load Model")
 K.clear_session()
 # base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
@@ -98,64 +97,37 @@ base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(
 
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
-# # x = Flatten()(x)
 x = Dense(4096)(x)
 x = BatchNormalization()(x)
 x = Activation('relu')(x)
-x = Dropout(.5)(x)
+x = Dropout(0.7)(x)
 predictions = Dense(101, activation='softmax')(x)
 
-# x = base_model.output
-# x = AveragePooling2D((8, 8), strides=(8, 8), name='avg_pool')(x)
-# x = Flatten(name='flatten')(x)
-# predictions = Dense(101, activation='softmax', name='predictions')(x)
-
 model = Model(inputs=base_model.input, outputs=predictions)
-# model.summary()
-# len(model.layers)
-
-for layer in base_model.layers:
-    layer.trainable = False
-
-########### EDIT THIS PART
-model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 import time
-filename = time.strftime("%Y%m%d_%H%M") + "_xception"
+filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp07_resume"
 
 # serialize model to JSON
 model_json = model.to_json()
 with open(filename + "_model.json", "w") as json_file:
     json_file.write(model_json)
 
-# print("First pass")
-# checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
-# csv_logger = CSVLogger(filename + '_first.log')
-# model.fit_generator(generator,
-#                     validation_data=val_generator,
-#                     epochs=10,
-#                     verbose=1,
-#                     callbacks=[csv_logger, checkpointer])
+print("First pass after 10 epochs")
 
-model.load_weights("20180606_0529_vgg19_first.10-2.84.hdf5")
+model.load_weights("20180607_0548_xception_dp_0.7_first.10-2.76.hdf5")
 
-for layer in model.layers[:105]:
+for layer in base_model.layers:
     layer.trainable = False
-for layer in model.layers[105:]:
-    layer.trainable = True
-
-print("Third pass")
-model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-checkpointer = ModelCheckpoint(filepath=filename + '_third.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
-earlystopper = EarlyStopping(monitor='val_loss', patience=15, verbose=1)
-csv_logger = CSVLogger(filename + '_second.log')
+model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+csv_logger = CSVLogger(filename + '_first.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    epochs=80,
+                    epochs=40,
                     verbose=1,
-                    callbacks=[csv_logger, checkpointer, earlystopper])
-
+                    callbacks=[csv_logger, checkpointer])
 
 # serialize weights to HDF5
-model.save_weights(filename + "_modelweights_thirdpass.h5")
+model.save_weights(filename + "_finalweights.hdf5")
 print("Saved model to disk")

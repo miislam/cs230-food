@@ -88,7 +88,7 @@ val_generator = datagen.flow(X_test, y_test, batch_size=9)
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
 ## InceptionV3
 
-for dp in [0.6, 0.65, 0.7]:
+for nh in [4, 8, 12, 16]:
     print("Load Model")
     K.clear_session()
     # base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
@@ -101,25 +101,30 @@ for dp in [0.6, 0.65, 0.7]:
     x = Dense(4096)(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(dp)(x)
+    x = Dropout(0.7)(x)
     predictions = Dense(101, activation='softmax')(x)
     
     model = Model(inputs=base_model.input, outputs=predictions)
     
     import time
-    filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp_"+str(dp)
+    filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp07_second_" + str(nh)
     
     # serialize model to JSON
     model_json = model.to_json()
     with open(filename + "_model.json", "w") as json_file:
         json_file.write(model_json)
     
-    print("First pass")
-    for layer in base_model.layers:
+    print("Second pass")
+    
+    model.load_weights("20180607_0548_xception_dp_0.7_first.10-2.76.hdf5")
+    
+    for layer in model.layers[:132-nh]:
         layer.trainable = False
+    for layer in model.layers[132-nh:]:
+        layer.trainable = True
     model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
-    checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
-    csv_logger = CSVLogger(filename + '_first.log')
+    checkpointer = ModelCheckpoint(filepath=filename + '_second.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+    csv_logger = CSVLogger(filename + '_second.log')
     model.fit_generator(generator,
                         validation_data=val_generator,
                         epochs=10,
@@ -127,5 +132,6 @@ for dp in [0.6, 0.65, 0.7]:
                         callbacks=[csv_logger, checkpointer])
     
     # serialize weights to HDF5
-    model.save_weights(filename + "_modelweights.hdf5")
+    model.save_weights(filename + "_finalweights.hdf5")
     print("Saved model to disk")
+    

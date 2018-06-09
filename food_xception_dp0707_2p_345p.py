@@ -12,7 +12,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D, GlobalAveragePooling2D, AveragePooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
-from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger
+from keras.callbacks import ModelCheckpoint, TensorBoard, CSVLogger, EarlyStopping
 import keras.backend as K
 from keras.optimizers import SGD, RMSprop, Adam
 from keras.models import model_from_json
@@ -61,7 +61,6 @@ index_test = sample(range(X_test.shape[0]),X_test.shape[0])
 X_test = X_test[index_test,:,:,:]
 y_test = y_test[index_test,:]
 
-
 ######## Set up Image Augmentation
 print("Setting up ImageDataGenerator")
 datagen = ImageDataGenerator(
@@ -89,60 +88,128 @@ val_generator = datagen.flow(X_test, y_test, batch_size=9)
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
 ## InceptionV3
 
-########### EDIT THIS PART
+
 print("Load Model")
 K.clear_session()
-base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+# base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 # base_model = ResNet50(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 # base_model = VGG19(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
-# base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
+base_model = Xception(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
 
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
+x = Dropout(0.7)(x)
 x = Dense(4096)(x)
 x = BatchNormalization()(x)
 x = Activation('relu')(x)
-x = Dropout(.5)(x)
+x = Dropout(0.7)(x)
 predictions = Dense(101, activation='softmax')(x)
 
 model = Model(inputs=base_model.input, outputs=predictions)
 
 import time
-filename = time.strftime("%Y%m%d_%H%M") + "_inceptionadam"
+filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp0608"
 
 # serialize model to JSON
 model_json = model.to_json()
 with open(filename + "_model.json", "w") as json_file:
     json_file.write(model_json)
 
-print("First pass")
-for layer in base_model.layers:
+model.load_weights("20180607_2237_xception_dp0608_second.12-1.81.hdf5")
+
+# print("First pass")
+# for layer in base_model.layers:
+#     layer.trainable = False
+# model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+# checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+# csv_logger = CSVLogger(filename + '_first.log')
+# model.fit_generator(generator,
+#                     validation_data=val_generator,
+#                     epochs=40,
+#                     verbose=1,
+#                     callbacks=[csv_logger, checkpointer])
+
+# # serialize weights to HDF5
+# model.save_weights(filename + "_fp_weights.hdf5")
+# print("Saved model to disk")
+
+# nh = 8
+# print("Second pass")
+# for layer in model.layers[:132-nh]:
+#     layer.trainable = False
+# for layer in model.layers[132-nh:]:
+#     layer.trainable = True
+# model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+# checkpointer = ModelCheckpoint(filepath=filename + '_second.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+# csv_logger = CSVLogger(filename + '_second.log')
+# model.fit_generator(generator,
+#                     validation_data=val_generator,
+#                     epochs=30,
+#                     verbose=1,
+#                     callbacks=[csv_logger, checkpointer])
+
+# # serialize weights to HDF5
+# model.save_weights(filename + "_sp_weights.hdf5")
+# print("Saved model to disk")
+
+
+
+nh = 9
+print("Third pass")
+for layer in model.layers[:132-nh]:
     layer.trainable = False
-model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
-checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
-csv_logger = CSVLogger(filename + '_first.log')
+for layer in model.layers[132-nh:]:
+    layer.trainable = True
+model.compile(optimizer=Adam(lr=0.0001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+checkpointer = ModelCheckpoint(filepath=filename + '_third.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+csv_logger = CSVLogger(filename + 'third.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    epochs=10,
+                    epochs=20,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
 # serialize weights to HDF5
-model.save_weights(filename + "_modelweights.h5")
+model.save_weights(filename + "_3p_weights.hdf5")
 print("Saved model to disk")
 
-# print("Second pass")
-# for layer in model.layers[:172]:
-#     layer.trainable = False
-# for layer in model.layers[172:]:
-#     layer.trainable = True
-# model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
-# checkpointer = ModelCheckpoint(filepath=filename + '_second.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=True)
-# csv_logger = CSVLogger(filename + '_second.log')
-# model.fit_generator(generator,
-#                     validation_data=val_generator,
-#                     epochs=20,
-#                     verbose=1,
-#                     callbacks=[csv_logger, checkpointer])
 
- 
+nh = 10
+print("Fourth pass")
+for layer in model.layers[:132-nh]:
+    layer.trainable = False
+for layer in model.layers[132-nh:]:
+    layer.trainable = True
+model.compile(optimizer=Adam(lr=0.0001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+checkpointer = ModelCheckpoint(filepath=filename + '_fourth.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+csv_logger = CSVLogger(filename + '_fourth.log')
+model.fit_generator(generator,
+                    validation_data=val_generator,
+                    epochs=30,
+                    verbose=1,
+                    callbacks=[csv_logger, checkpointer])
+
+# serialize weights to HDF5
+model.save_weights(filename + "_4p_weights.hdf5")
+print("Saved model to disk")
+
+
+
+nh = 12
+print("Fifth pass 16 layers")
+for layer in model.layers[:132-nh]:
+    layer.trainable = False
+for layer in model.layers[132-nh:]:
+    layer.trainable = True
+model.compile(optimizer=Adam(lr=0.0001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
+checkpointer = ModelCheckpoint(filepath=filename + '_fifth.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_best_only=False)
+csv_logger = CSVLogger(filename + 'fifth.log')
+model.fit_generator(generator,
+                    validation_data=val_generator,
+                    epochs=30,
+                    verbose=1,
+                    callbacks=[csv_logger, checkpointer])
+
+# serialize weights to HDF5
+model.save_weights(filename + "_5p_weights.hdf5")
+print("Saved model to disk")

@@ -108,14 +108,18 @@ predictions = Dense(101, activation='softmax')(x)
 model = Model(inputs=base_model.input, outputs=predictions)
 
 import time
-filename = time.strftime("%Y%m%d_%H%M") + "_v2_xception"
+filename = time.strftime("%Y%m%d_%H%M") + "_v2_xception_3 more"
 
 # serialize model to JSON
 model_json = model.to_json()
 with open(filename + "_model.json", "w") as json_file:
     json_file.write(model_json)
 
-print("First pass")
+
+model.load_weights("20180606_0213_xception_second.07-2.13.hdf5")
+
+
+print("First pass after 7 epochs done")
 for layer in base_model.layers:
     layer.trainable = False
 model.compile(optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999), loss='categorical_crossentropy', metrics=['accuracy'])
@@ -123,12 +127,12 @@ checkpointer = ModelCheckpoint(filepath=filename + '_first.{epoch:02d}-{val_loss
 csv_logger = CSVLogger(filename + '_first.log')
 model.fit_generator(generator,
                     validation_data=val_generator,
-                    epochs=30,
+                    epochs=3,
                     verbose=1,
                     callbacks=[csv_logger, checkpointer])
 
 # serialize weights to HDF5
-model.save_weights(filename + "_modelweights.h5")
+model.save_weights(filename + "_modelweights.hdf5")
 print("Saved model to disk")
 
 # print("Second pass")

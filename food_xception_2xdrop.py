@@ -88,7 +88,7 @@ val_generator = datagen.flow(X_test, y_test, batch_size=9)
 ## 86.09% with batchnorm/dropout/img.aug/adam(10)/rmsprop(140)
 ## InceptionV3
 
-for dp in [0.6, 0.65, 0.7]:
+for dp in [0.4, 0.5, 0.6, 0.7]:
     print("Load Model")
     K.clear_session()
     # base_model = InceptionV3(weights='imagenet', include_top=False, input_tensor=Input(shape=(299, 299, 3)))
@@ -98,16 +98,17 @@ for dp in [0.6, 0.65, 0.7]:
     
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
+    x = Dropout(dp)(x)
     x = Dense(4096)(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(dp)(x)
+    x = Dropout(0.7)(x)
     predictions = Dense(101, activation='softmax')(x)
     
     model = Model(inputs=base_model.input, outputs=predictions)
     
     import time
-    filename = time.strftime("%Y%m%d_%H%M") + "_xception_dp_"+str(dp)
+    filename = time.strftime("%Y%m%d_%H%M") + "_xception_2xdp_"+str(dp)
     
     # serialize model to JSON
     model_json = model.to_json()
@@ -127,5 +128,5 @@ for dp in [0.6, 0.65, 0.7]:
                         callbacks=[csv_logger, checkpointer])
     
     # serialize weights to HDF5
-    model.save_weights(filename + "_modelweights.hdf5")
+    model.save_weights(filename + "_finalweights.hdf5")
     print("Saved model to disk")
